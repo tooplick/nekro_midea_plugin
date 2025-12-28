@@ -1,2 +1,90 @@
-# nekro_midea_plugin
-美的智能家居控制
+# 美的智能家居控制插件
+
+一个基于 [Nekro Agent](https://github.com/KroMiose/nekro-agent) 框架的美的智能家居控制插件，允许 AI 助手通过美的云控制智能家居设备。
+
+## 功能特点
+
+- 支持多种美的智能设备（空调、风扇、除湿机、加湿器、灯、热水器等）
+- 提供 Web 界面用于账号登录和设备管理
+- 使用 KV 存储保持登录状态
+- 异步处理所有网络请求
+
+## 账号登录
+
+### 使用 Web 界面
+插件提供了一个 Web 界面用于账号登录和设备查看：
+- 启动插件后，访问 [http://<服务器ip:NA端口>plugin/GeQian.nekro_midea_plugin/](../plugins/GeQian.order_qqmusic)
+- 输入美的账号（手机号或邮箱）和密码
+- 点击"登录"按钮完成登录
+
+## API 接口
+
+插件提供以下 API 接口：
+- `GET /api/status` - 检查登录状态
+- `POST /api/login` - 登录美的账号
+- `POST /api/logout` - 退出登录
+- `GET /api/homes` - 获取家庭列表
+- `GET /api/devices/{home_id}` - 获取设备列表
+
+## AI 沙盒方法
+
+Bot 可以通过调用以下方法来控制设备：
+
+| 方法 | 功能 |
+|------|------|
+| `get_midea_devices()` | 获取设备列表 |
+| `control_midea_ac(device_id, power, temperature, mode, fan_speed)` | 控制空调 |
+| `get_midea_ac_status(device_id)` | 获取空调状态 |
+| `control_midea_fan(device_id, power, fan_speed, oscillate, mode)` | 控制风扇 |
+| `control_midea_dehumidifier(device_id, power, target_humidity, mode, fan_speed)` | 控制除湿机 |
+| `control_midea_humidifier(device_id, power, target_humidity, mode)` | 控制加湿器 |
+| `control_midea_light(device_id, power, brightness, color_temp)` | 控制智能灯 |
+| `control_midea_water_heater(device_id, power, target_temperature)` | 控制热水器 |
+| `control_midea_device(device_id, control_params)` | 通用控制 |
+| `get_midea_device_status(device_id, query_params)` | 通用状态查询 |
+
+### 使用示例
+
+```python
+# 手动使用
+/exec get_midea_devices()
+
+# 打开空调，制冷模式，26度
+/exec control_midea_ac(device_id=12345678, power=1, temperature=26, mode=2)
+
+# 关闭空调
+/exec control_midea_ac(device_id=12345678, power=0)
+```
+
+## 支持的设备类型
+
+- 空调 (0xAC)
+- 风扇 (0xFA)
+- 除湿机 (0xA1)
+- 加湿器 (0xFD)
+- 智能灯 (0xE2)
+- 热水器 (0x40)
+- 中央空调 (0xB6)
+- 冰箱 (0xDC)
+- 洗碗机 (0xDB)
+- 烘干机 (0xDA)
+- 电水壶 (0xED)
+
+## 版本历史
+
+- v1.0.0：初始发布版本
+  - 支持美的账号登录
+  - 提供 Web 管理界面
+  - 支持多种设备控制
+
+## 作者信息
+
+- **作者**：搁浅
+- **GitHub**：[https://github.com/tooplick](https://github.com/tooplick)
+
+## 技术致谢
+
+本插件的美的云 API 技术基于以下项目：
+- [midea_auto_cloud](https://github.com/sususweet/midea_auto_cloud) - Home Assistant 美的智能家居集成组件
+
+感谢原项目作者的开源贡献！
