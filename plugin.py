@@ -287,7 +287,7 @@ async def get_midea_ac_status(_ctx: AgentCtx, device_id: int) -> str:
         return "错误：美的账号未登录，请先在插件管理页面登录美的账号"
     
     try:
-        # 查询空调状态（增强版）
+        # 查询空调状态
         query = {
             "Power": {},
             "SetTemperature": {},
