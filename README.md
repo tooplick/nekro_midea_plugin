@@ -15,7 +15,7 @@
 ### 使用 Web 界面
 插件提供了一个 Web 界面用于账号登录和设备查看：
 - 启动插件后，访问 [http://<服务器ip:NA端口>plugin/GeQian.nekro_midea_plugin/](../plugins/GeQian.nekro_midea_plugin)
-- 输入美的账号（手机号或邮箱）和密码
+- 输入美的账号（手机号和密码）
 - 点击"登录"按钮完成登录
 
 ## API 接口
