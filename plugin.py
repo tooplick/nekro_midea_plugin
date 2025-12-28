@@ -43,9 +43,12 @@ async def _get_cloud_client() -> MeijuCloud | None:
 async def inject_midea_hint(_ctx: AgentCtx) -> str:
     """注入美的设备控制的使用提示"""
     return """【美的智能家居控制提示】
-调用美的设备控制方法后，请根据返回结果用自然语言回复用户，不要直接发送工具的原始返回值。
-- 如果返回包含"成功"，用你的风格告诉用户操作成功
-- 如果返回包含"失败"或"离线"，用你的风格告诉用户设备可能离线或操作失败"""
+调用美的设备控制方法后，根据返回值用自然语言回复用户：
+- ok: 操作成功
+- error:device_offline: 设备离线
+- error:not_logged_in: 未登录美的账号
+- error:invalid_xxx: 参数错误
+不要直接发送返回值给用户。"""
 
 
 @plugin.mount_sandbox_method(
@@ -140,7 +143,7 @@ async def control_midea_ac(
     """
     cloud = await _get_cloud_client()
     if not cloud:
-        return "错误：美的账号未登录，请先在插件管理页面登录美的账号"
+        return "error:not_logged_in"
     
     # 构建控制命令
     control = {}
@@ -152,34 +155,34 @@ async def control_midea_ac(
     
     if temperature is not None:
         if temperature < 16 or temperature > 30:
-            return "错误：温度范围应为 16-30 度"
+            return "error:invalid_temperature"
         control["SetTemperature"] = temperature
         control_desc.append(f"温度={temperature}°C")
     
     if mode is not None:
         mode_names = {1: "自动", 2: "制冷", 3: "除湿", 4: "送风", 5: "制热"}
         if mode not in mode_names:
-            return f"错误：模式值应为 1-5，分别代表：{mode_names}"
+            return "error:invalid_mode"
         control["Mode"] = mode
         control_desc.append(f"模式={mode_names[mode]}")
     
     if fan_speed is not None:
         if fan_speed < 0 or fan_speed > 7:
-            return "错误：风速范围应为 0-7（0=自动）"
+            return "error:invalid_fan_speed"
         control["FanSpeed"] = fan_speed
         control_desc.append(f"风速={'自动' if fan_speed == 0 else fan_speed}")
     
     if not control:
-        return "错误：请至少指定一个控制参数（power, temperature, mode, fan_speed）"
+        return "error:no_params"
     
     try:
         success = await cloud.send_device_control(device_id, control)
         if success:
-            return f"空调控制成功: {', '.join(control_desc)}"
+            return "ok"
         else:
-            return "空调控制失败，请检查设备是否在线"
+            return "error:device_offline"
     except Exception as e:
-        return f"控制空调失败: {e}"
+        return f"error:exception:{e}"
 
 
 @plugin.mount_sandbox_method(
@@ -282,7 +285,7 @@ async def control_midea_fan(
     """
     cloud = await _get_cloud_client()
     if not cloud:
-        return "错误：美的账号未登录"
+        return "error:not_logged_in"
     
     control = {}
     control_desc = []
@@ -305,13 +308,13 @@ async def control_midea_fan(
         control_desc.append(f"模式={mode_names.get(mode, mode)}")
     
     if not control:
-        return "错误：请至少指定一个控制参数"
+        return "error:no_params"
     
     try:
         success = await cloud.send_device_control(device_id, control)
-        return f"风扇控制{'成功' if success else '失败'}: {', '.join(control_desc)}"
+        return "ok" if success else "error:device_offline"
     except Exception as e:
-        return f"控制风扇失败: {e}"
+        return f"error:exception:{e}"
 
 
 @plugin.mount_sandbox_method(
@@ -347,7 +350,7 @@ async def control_midea_dehumidifier(
     """
     cloud = await _get_cloud_client()
     if not cloud:
-        return "错误：美的账号未登录"
+        return "error:not_logged_in"
     
     control = {}
     control_desc = []
@@ -358,7 +361,7 @@ async def control_midea_dehumidifier(
     
     if target_humidity is not None:
         if target_humidity < 35 or target_humidity > 85:
-            return "错误：湿度范围应为 35-85%"
+            return "error:invalid_humidity"
         control["TargetHumidity"] = target_humidity
         control_desc.append(f"目标湿度={target_humidity}%")
     
@@ -372,13 +375,13 @@ async def control_midea_dehumidifier(
         control_desc.append(f"风速={'低速' if fan_speed == 1 else '高速'}")
     
     if not control:
-        return "错误：请至少指定一个控制参数"
+        return "error:no_params"
     
     try:
         success = await cloud.send_device_control(device_id, control)
-        return f"除湿机控制{'成功' if success else '失败'}: {', '.join(control_desc)}"
+        return "ok" if success else "error:device_offline"
     except Exception as e:
-        return f"控制除湿机失败: {e}"
+        return f"error:exception:{e}"
 
 
 @plugin.mount_sandbox_method(
@@ -412,7 +415,7 @@ async def control_midea_humidifier(
     """
     cloud = await _get_cloud_client()
     if not cloud:
-        return "错误：美的账号未登录"
+        return "error:not_logged_in"
     
     control = {}
     control_desc = []
@@ -423,7 +426,7 @@ async def control_midea_humidifier(
     
     if target_humidity is not None:
         if target_humidity < 40 or target_humidity > 80:
-            return "错误：湿度范围应为 40-80%"
+            return "error:invalid_humidity"
         control["TargetHumidity"] = target_humidity
         control_desc.append(f"目标湿度={target_humidity}%")
     
@@ -433,13 +436,13 @@ async def control_midea_humidifier(
         control_desc.append(f"模式={mode_names.get(mode, mode)}")
     
     if not control:
-        return "错误：请至少指定一个控制参数"
+        return "error:no_params"
     
     try:
         success = await cloud.send_device_control(device_id, control)
-        return f"加湿器控制{'成功' if success else '失败'}: {', '.join(control_desc)}"
+        return "ok" if success else "error:device_offline"
     except Exception as e:
-        return f"控制加湿器失败: {e}"
+        return f"error:exception:{e}"
 
 
 @plugin.mount_sandbox_method(
@@ -473,7 +476,7 @@ async def control_midea_light(
     """
     cloud = await _get_cloud_client()
     if not cloud:
-        return "错误：美的账号未登录"
+        return "error:not_logged_in"
     
     control = {}
     control_desc = []
@@ -484,24 +487,24 @@ async def control_midea_light(
     
     if brightness is not None:
         if brightness < 1 or brightness > 100:
-            return "错误：亮度范围应为 1-100%"
+            return "error:invalid_brightness"
         control["Brightness"] = brightness
         control_desc.append(f"亮度={brightness}%")
     
     if color_temp is not None:
         if color_temp < 0 or color_temp > 100:
-            return "错误：色温范围应为 0-100"
+            return "error:invalid_color_temp"
         control["ColorTemperature"] = color_temp
         control_desc.append(f"色温={color_temp}")
     
     if not control:
-        return "错误：请至少指定一个控制参数"
+        return "error:no_params"
     
     try:
         success = await cloud.send_device_control(device_id, control)
-        return f"灯控制{'成功' if success else '失败'}: {', '.join(control_desc)}"
+        return "ok" if success else "error:device_offline"
     except Exception as e:
-        return f"控制灯失败: {e}"
+        return f"error:exception:{e}"
 
 
 @plugin.mount_sandbox_method(
@@ -533,7 +536,7 @@ async def control_midea_water_heater(
     """
     cloud = await _get_cloud_client()
     if not cloud:
-        return "错误：美的账号未登录"
+        return "error:not_logged_in"
     
     control = {}
     control_desc = []
@@ -544,18 +547,18 @@ async def control_midea_water_heater(
     
     if target_temperature is not None:
         if target_temperature < 35 or target_temperature > 75:
-            return "错误：温度范围应为 35-75°C"
+            return "error:invalid_temperature"
         control["TargetTemperature"] = target_temperature
         control_desc.append(f"目标温度={target_temperature}°C")
     
     if not control:
-        return "错误：请至少指定一个控制参数"
+        return "error:no_params"
     
     try:
         success = await cloud.send_device_control(device_id, control)
-        return f"热水器控制{'成功' if success else '失败'}: {', '.join(control_desc)}"
+        return "ok" if success else "error:device_offline"
     except Exception as e:
-        return f"控制热水器失败: {e}"
+        return f"error:exception:{e}"
 
 
 @plugin.mount_sandbox_method(
@@ -586,24 +589,21 @@ async def control_midea_device(
     """
     cloud = await _get_cloud_client()
     if not cloud:
-        return "错误：美的账号未登录"
+        return "error:not_logged_in"
     
     try:
         control = json.loads(control_params)
     except json.JSONDecodeError as e:
-        return f"错误：控制参数JSON格式错误: {e}"
+        return f"error:invalid_json:{e}"
     
     if not control or not isinstance(control, dict):
-        return "错误：控制参数必须是非空的JSON对象"
+        return "error:invalid_params"
     
     try:
         success = await cloud.send_device_control(device_id, control)
-        if success:
-            return f"设备控制成功: {control_params}"
-        else:
-            return "设备控制失败，请检查设备是否在线"
+        return "ok" if success else "error:device_offline"
     except Exception as e:
-        return f"控制设备失败: {e}"
+        return f"error:exception:{e}"
 
 
 @plugin.mount_sandbox_method(
