@@ -37,7 +37,7 @@ async def _get_cloud_client() -> MeijuCloud | None:
 
 
 @plugin.mount_sandbox_method(
-    SandboxMethodType.TOOL,
+    SandboxMethodType.AGENT,
     name="获取美的设备列表",
     description="获取美的智能家居的所有设备列表"
 )
