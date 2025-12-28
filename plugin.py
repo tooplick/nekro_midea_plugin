@@ -37,7 +37,7 @@ async def _get_cloud_client() -> MeijuCloud | None:
 
 
 @plugin.mount_sandbox_method(
-    SandboxMethodType.TOOL,
+    SandboxMethodType.AGENT,
     name="获取美的设备列表",
     description="获取美的智能家居的所有设备列表"
 )
@@ -89,7 +89,7 @@ async def get_midea_devices(_ctx: AgentCtx) -> str:
 
 
 @plugin.mount_sandbox_method(
-    SandboxMethodType.TOOL,
+    SandboxMethodType.AGENT,
     name="控制美的空调",
     description="控制美的空调的开关、温度、模式等"
 )
@@ -171,7 +171,7 @@ async def control_midea_ac(
 
 
 @plugin.mount_sandbox_method(
-    SandboxMethodType.TOOL,
+    SandboxMethodType.AGENT,
     name="获取美的空调状态",
     description="获取美的空调的当前运行状态"
 )
@@ -238,7 +238,7 @@ async def get_midea_ac_status(_ctx: AgentCtx, device_id: int) -> str:
 
 
 @plugin.mount_sandbox_method(
-    SandboxMethodType.TOOL,
+    SandboxMethodType.AGENT,
     name="控制美的风扇",
     description="控制美的风扇的开关、风速、摇头等"
 )
@@ -303,7 +303,7 @@ async def control_midea_fan(
 
 
 @plugin.mount_sandbox_method(
-    SandboxMethodType.TOOL,
+    SandboxMethodType.AGENT,
     name="控制美的除湿机",
     description="控制美的除湿机的开关、湿度、模式等"
 )
@@ -370,7 +370,7 @@ async def control_midea_dehumidifier(
 
 
 @plugin.mount_sandbox_method(
-    SandboxMethodType.TOOL,
+    SandboxMethodType.AGENT,
     name="控制美的加湿器",
     description="控制美的加湿器的开关、湿度等"
 )
@@ -431,7 +431,7 @@ async def control_midea_humidifier(
 
 
 @plugin.mount_sandbox_method(
-    SandboxMethodType.TOOL,
+    SandboxMethodType.AGENT,
     name="控制美的灯",
     description="控制美的智能灯的开关、亮度、色温等"
 )
@@ -493,7 +493,7 @@ async def control_midea_light(
 
 
 @plugin.mount_sandbox_method(
-    SandboxMethodType.TOOL,
+    SandboxMethodType.AGENT,
     name="控制美的热水器",
     description="控制美的热水器的开关、温度等"
 )
@@ -547,7 +547,7 @@ async def control_midea_water_heater(
 
 
 @plugin.mount_sandbox_method(
-    SandboxMethodType.TOOL,
+    SandboxMethodType.AGENT,
     name="控制美的设备(通用)",
     description="通用的美的设备控制方法，可以发送任意控制参数"
 )
@@ -595,7 +595,7 @@ async def control_midea_device(
 
 
 @plugin.mount_sandbox_method(
-    SandboxMethodType.TOOL,
+    SandboxMethodType.AGENT,
     name="获取美的设备状态(通用)",
     description="获取任意美的设备的状态"
 )
