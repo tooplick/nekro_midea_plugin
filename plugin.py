@@ -36,6 +36,18 @@ async def _get_cloud_client() -> MeijuCloud | None:
     return cloud
 
 
+@plugin.mount_prompt_inject_method(
+    name="midea_usage_hint",
+    description="美的设备控制使用提示"
+)
+async def inject_midea_hint(_ctx: AgentCtx) -> str:
+    """注入美的设备控制的使用提示"""
+    return """【美的智能家居控制提示】
+调用美的设备控制方法后，请根据返回结果用自然语言回复用户，不要直接发送工具的原始返回值。
+- 如果返回包含"成功"，用你的风格告诉用户操作成功
+- 如果返回包含"失败"或"离线"，用你的风格告诉用户设备可能离线或操作失败"""
+
+
 @plugin.mount_sandbox_method(
     SandboxMethodType.AGENT,
     name="获取美的设备列表",
