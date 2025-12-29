@@ -12,29 +12,45 @@ from .base import get_cloud_client
 @plugin.mount_sandbox_method(
     SandboxMethodType.TOOL,
     name="控制美的除湿机",
-    description="控制美的除湿机的开关、湿度、模式等"
+    description="控制美的除湿机的开关、湿度、模式、风速、负离子、童锁、摆风等"
 )
 async def control_midea_dehumidifier(
     _ctx: AgentCtx,
     device_id: int,
     power: int | None = None,
     target_humidity: int | None = None,
-    mode: int | None = None,
-    fan_speed: int | None = None
+    mode: str | None = None,
+    fan_speed: str | None = None,
+    anion: int | None = None,
+    child_lock: int | None = None,
+    swing_ud: int | None = None
 ) -> str:
     """控制美的除湿机设备
 
-    可以控制除湿机的电源开关、目标湿度、模式和风速。
+    可以控制除湿机的电源开关、目标湿度、模式、风速、负离子、童锁、上下摆风等。
 
     Args:
-        device_id (int): 除湿机设备的ID
+        device_id (int): 除湿机设备的ID，可通过 get_midea_devices() 获取
         power (int | None): 电源状态，1=开机，0=关机
         target_humidity (int | None): 目标湿度，范围35-85%
-        mode (int | None): 模式，1=智能 2=连续 3=干衣
-        fan_speed (int | None): 风速，1=低速 2=高速
+        mode (str | None): 模式，"continuity"=连续 "auto"=智能 "fan"=送风 "dry_shoes"=干鞋 "dry_clothes"=干衣
+        fan_speed (str | None): 风速，"low"=低速 "high"=高速
+        anion (int | None): 负离子，1=开启，0=关闭
+        child_lock (int | None): 童锁，1=开启，0=关闭
+        swing_ud (int | None): 上下摆风，1=开启，0=关闭
 
     Returns:
-        str: 控制结果描述
+        str: 控制结果，"ok"表示成功，"error:xxx"表示失败
+
+    Example:
+        # 打开除湿机，设置目标湿度50%，智能模式
+        result = control_midea_dehumidifier(device_id=12345678, power=1, target_humidity=50, mode="auto")
+        
+        # 开启负离子功能
+        result = control_midea_dehumidifier(device_id=12345678, anion=1)
+        
+        # 开启干衣模式
+        result = control_midea_dehumidifier(device_id=12345678, mode="dry_clothes")
     """
     cloud = await get_cloud_client()
     if not cloud:
@@ -48,13 +64,45 @@ async def control_midea_dehumidifier(
     if target_humidity is not None:
         if target_humidity < 35 or target_humidity > 85:
             return "error:invalid_humidity"
-        control["TargetHumidity"] = target_humidity
+        control["Humidity"] = target_humidity
     
     if mode is not None:
-        control["Mode"] = mode
+        mode_map = {
+            "continuity": "continuity",
+            "auto": "auto",
+            "fan": "fan",
+            "dry_shoes": "dry_shoes",
+            "dry_clothes": "dry_clothes"
+        }
+        if mode in mode_map:
+            control["Mode"] = mode_map[mode]
+        else:
+            return f"error:invalid_mode:{mode}"
     
     if fan_speed is not None:
-        control["FanSpeed"] = fan_speed
+        speed_map = {
+            "low": "30",
+            "high": "80"
+        }
+        if fan_speed in speed_map:
+            control["WindSpeed"] = speed_map[fan_speed]
+        else:
+            return f"error:invalid_fan_speed:{fan_speed}"
+    
+    if anion is not None:
+        if anion not in (0, 1):
+            return "error:invalid_anion"
+        control["Anion"] = anion
+    
+    if child_lock is not None:
+        if child_lock not in (0, 1):
+            return "error:invalid_child_lock"
+        control["ChildLock"] = child_lock
+    
+    if swing_ud is not None:
+        if swing_ud not in (0, 1):
+            return "error:invalid_swing_ud"
+        control["WindSwingUD"] = swing_ud
     
     if not control:
         return "error:no_params"

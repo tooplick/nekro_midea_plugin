@@ -6,9 +6,10 @@
 
 - 支持多种美的智能设备（空调、风扇、除湿机、加湿器、灯、热水器等）
 - 空调支持丰富的控制参数（温度、模式、风速、摆风、预设模式、电辅热、干燥、防直吹）
+- 各设备支持完整控制参数（负离子、童锁、灯效、运行模式等）
 - 提供 Web 界面用于账号登录和设备管理
 - 使用 KV 存储保持登录状态
-- 异步处理所有网络请求
+- 模块化项目结构，易于维护
 
 ## 账号登录
 
@@ -29,36 +30,24 @@
 
 ## AI 沙盒方法
 
+> 详细方法参数请参阅 [API_METHODS.md](API_METHODS.md)
+
 Bot 可以通过调用以下方法来控制设备：
 
-| 方法 | 功能 |
-|------|------|
-| `get_midea_devices()` | 获取设备列表 |
-| `control_midea_ac(...)` | 控制空调（详见下方参数表） |
-| `get_midea_ac_status(device_id)` | 获取空调状态 |
-| `control_midea_fan(device_id, power, fan_speed, oscillate, mode)` | 控制风扇 |
-| `control_midea_dehumidifier(device_id, power, target_humidity, mode, fan_speed)` | 控制除湿机 |
-| `control_midea_humidifier(device_id, power, target_humidity, mode)` | 控制加湿器 |
-| `control_midea_light(device_id, power, brightness, color_temp)` | 控制智能灯 |
-| `control_midea_water_heater(device_id, power, target_temperature)` | 控制热水器 |
-| `control_midea_device(device_id, control_params)` | 通用控制 |
-| `get_midea_device_status(device_id, query_params)` | 通用状态查询 |
+| 方法 | 功能 | 主要参数 |
+|------|------|----------|
+| `get_midea_devices()` | 获取设备列表 | - |
+| `control_midea_ac(...)` | 控制空调 | power, temperature, mode, fan_speed, swing_ud/lr, preset_mode, aux_heat |
+| `get_midea_ac_status(...)` | 获取空调状态 | device_id |
+| `control_midea_fan(...)` | 控制风扇 | power, fan_speed, oscillate, mode, **anion**, **display**, **swing_direction** |
+| `control_midea_dehumidifier(...)` | 控制除湿机 | power, target_humidity, mode, fan_speed, **anion**, **child_lock**, **swing_ud** |
+| `control_midea_humidifier(...)` | 控制加湿器 | power, target_humidity, mode, **wind_gear**, **net_ions**, **air_dry**, **buzzer** |
+| `control_midea_light(...)` | 控制智能灯 | power, brightness, color_temp, **effect**, **rgb_color** |
+| `control_midea_water_heater(...)` | 控制热水器 | power, target_temperature, **operation_mode** |
+| `control_midea_device(...)` | 通用控制 | device_id, control_params (JSON) |
+| `get_midea_device_status(...)` | 通用状态查询 | device_id, query_params (JSON) |
 
-### 空调控制参数
-
-| 参数 | 类型 | 说明 | 取值范围 |
-|------|------|------|----------|
-| `device_id` | int | 设备ID | 通过 get_midea_devices() 获取 |
-| `power` | int | 电源开关 | 0=关, 1=开 |
-| `temperature` | int | 设定温度 | 16-30°C |
-| `mode` | int | 运行模式 | 1=自动, 2=制冷, 3=除湿, 4=送风, 5=制热 |
-| `fan_speed` | int | 风速 | 0=自动, 1-7=手动档位 |
-| `swing_ud` | int | 上下摆风 | 0=关, 1=开 |
-| `swing_lr` | int | 左右摆风 | 0=关, 1=开 |
-| `preset_mode` | str | 预设模式 | "none"=正常, "eco"=节能, "comfort"=舒适, "boost"=强劲 |
-| `aux_heat` | int | 电辅热(PTC) | 0=关, 1=开 |
-| `dry` | int | 干燥模式 | 0=关, 1=开 |
-| `prevent_straight_wind` | int | 防直吹 | 0=关, 1=开 |
+> **加粗** 参数为 v1.2.0 新增
 
 ### 使用示例
 
@@ -66,47 +55,75 @@ Bot 可以通过调用以下方法来控制设备：
 # 获取设备列表
 /exec print(get_midea_devices())
 
-# 打开空调，制冷模式，26度
-/exec control_midea_ac(device_id=12345678, power=1, temperature=26, mode=2)
+# 空调：制冷模式，26度，节能
+/exec control_midea_ac(device_id=12345678, power=1, temperature=26, mode=2, preset_mode="eco")
 
-# 设置节能模式，开启上下摆风
-/exec control_midea_ac(device_id=12345678, preset_mode="eco", swing_ud=1)
+# 风扇：睡眠模式，开启负离子
+/exec control_midea_fan(device_id=12345678, power=1, mode="sleep", anion=1)
 
-# 开启电辅热和防直吹
-/exec control_midea_ac(device_id=12345678, aux_heat=1, prevent_straight_wind=1)
+# 除湿机：智能模式，目标湿度50%
+/exec control_midea_dehumidifier(device_id=12345678, power=1, target_humidity=50, mode="auto")
 
-# 关闭空调
-/exec control_midea_ac(device_id=12345678, power=0)
+# 加湿器：手动模式，低档风
+/exec control_midea_humidifier(device_id=12345678, power=1, mode="manual", wind_gear="low")
+
+# 灯：亮度80%，暖色温
+/exec control_midea_light(device_id=12345678, power=1, brightness=80, color_temp=20)
+
+# 热水器：50度，节能模式
+/exec control_midea_water_heater(device_id=12345678, power=1, target_temperature=50, operation_mode="eco")
 ```
 
 ## 支持的设备类型
 
-- 空调 (0xAC)
-- 风扇 (0xFA)
-- 除湿机 (0xA1)
-- 加湿器 (0xFD)
-- 智能灯 (0xE2)
-- 热水器 (0x40)
-- 中央空调 (0xB6)
-- 冰箱 (0xDC)
-- 洗碗机 (0xDB)
-- 烘干机 (0xDA)
-- 电水壶 (0xED)
+| 类型代码 | 设备 | 控制支持 |
+|----------|------|----------|
+| 0xAC | 空调 | ✅ 完整 |
+| 0xFA | 风扇 | ✅ 完整 |
+| 0xA1 | 除湿机 | ✅ 完整 |
+| 0xFD | 加湿器 | ✅ 完整 |
+| 0xE2 | 智能灯 | ✅ 完整 |
+| 0x40 | 热水器 | ✅ 完整 |
+| 0xB6 | 中央空调 | 通用控制 |
+| 0xDC | 冰箱 | 通用控制 |
+
+## 项目结构
+
+```
+nekro_midea_plugin/
+├── __init__.py
+├── plugin.py           # 插件定义
+├── constants.py        # 常量定义
+├── router.py           # API路由
+├── midea/              # 云API模块
+│   ├── client.py       # 美的云客户端
+│   └── security.py     # 加密安全
+├── controllers/        # 设备控制器
+│   ├── base.py         # 基础方法
+│   ├── ac.py           # 空调
+│   ├── fan.py          # 风扇
+│   ├── dehumidifier.py # 除湿机
+│   ├── humidifier.py   # 加湿器
+│   ├── light.py        # 灯
+│   └── water_heater.py # 热水器
+└── web/                # Web界面
+```
 
 ## 版本历史
 
-- v1.1.0：空调控制增强
-  - 新增摆风控制（上下/左右）
-  - 新增预设模式（节能/舒适/强劲）
-  - 新增电辅热控制
-  - 新增干燥模式
-  - 新增防直吹功能
-  - 状态查询增加湿度和新功能状态
+### v1.2.0
+- 重构项目结构，模块化设计
+- 风扇新增：负离子、显示开关、摆风方向
+- 除湿机新增：负离子、童锁、摆风
+- 加湿器新增：风档、净离子、风干、蜂鸣器
+- 灯新增：灯效、RGB颜色
+- 热水器新增：运行模式
 
-- v1.0.0：初始发布版本
-  - 支持美的账号登录
-  - 提供 Web 管理界面
-  - 支持多种设备控制
+### v1.1.0
+- 空调控制增强（摆风、预设模式、电辅热、干燥、防直吹）
+
+### v1.0.0
+- 初始发布版本
 
 ## 作者信息
 
@@ -115,7 +132,4 @@ Bot 可以通过调用以下方法来控制设备：
 
 ## 技术致谢
 
-本插件的美的云 API 技术基于以下项目：
-- [midea_auto_cloud](https://github.com/sususweet/midea_auto_cloud) - Home Assistant 美的智能家居集成组件
-
-感谢原项目作者的开源贡献！
+本插件的美的云 API 技术基于 [midea_auto_cloud](https://github.com/sususweet/midea_auto_cloud) 项目。

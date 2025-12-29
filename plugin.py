@@ -10,7 +10,7 @@ plugin = NekroPlugin(
     name="美的智能家居控制",
     module_name="nekro_midea_plugin",
     description="给予AI助手通过美的云控制智能家居设备的能力",
-    version="1.1.0",
+    version="1.2.0",
     author="GeQian",
     url="https://github.com/tooplick/nekro_midea_plugin",
 )
