@@ -32,23 +32,6 @@
 
 > 详细方法参数请参阅 [API_METHODS.md](https://github.com/tooplick/nekro_midea_plugin/blob/main/API_METHODS.md)
 
-Bot 可以通过调用以下方法来控制设备：
-
-| 方法 | 功能 | 主要参数 |
-|------|------|----------|
-| `get_midea_devices()` | 获取设备列表 | - |
-| `control_midea_ac(...)` | 控制空调 | power, temperature, mode, fan_speed, swing_ud/lr, preset_mode, aux_heat |
-| `get_midea_ac_status(...)` | 获取空调状态 | device_id |
-| `control_midea_fan(...)` | 控制风扇 | power, fan_speed, oscillate, mode, **anion**, **display**, **swing_direction** |
-| `control_midea_dehumidifier(...)` | 控制除湿机 | power, target_humidity, mode, fan_speed, **anion**, **child_lock**, **swing_ud** |
-| `control_midea_humidifier(...)` | 控制加湿器 | power, target_humidity, mode, **wind_gear**, **net_ions**, **air_dry**, **buzzer** |
-| `control_midea_light(...)` | 控制智能灯 | power, brightness, color_temp, **effect**, **rgb_color** |
-| `control_midea_water_heater(...)` | 控制热水器 | power, target_temperature, **operation_mode** |
-| `control_midea_device(...)` | 通用控制 | device_id, control_params (JSON) |
-| `get_midea_device_status(...)` | 通用状态查询 | device_id, query_params (JSON) |
-
-> **加粗** 参数为 v1.2.0 新增
-
 ### 使用示例
 
 ```python
