@@ -11,12 +11,10 @@ from pydantic import BaseModel
 from nekro_agent.api.core import logger
 
 from .plugin import plugin
-from .midea_client import MeijuCloud, get_device_type_name
+from .constants import STORE_KEY_CREDENTIALS, get_device_type_name
+from .midea import MeijuCloud
 
 router = APIRouter()
-
-# KV 存储键名
-STORE_KEY_CREDENTIALS = "midea_credentials"
 
 
 class LoginRequest(BaseModel):
