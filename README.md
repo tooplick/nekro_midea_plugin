@@ -30,7 +30,7 @@
 
 ## AI 沙盒方法
 
-> 详细方法参数请参阅 [API_METHODS.md](API_METHODS.md)
+> 详细方法参数请参阅 [API_METHODS.md](https://github.com/tooplick/nekro_midea_plugin/blob/main/API_METHODS.md)
 
 Bot 可以通过调用以下方法来控制设备：
 
