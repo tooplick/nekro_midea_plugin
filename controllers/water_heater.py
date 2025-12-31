@@ -51,12 +51,13 @@ async def control_midea_water_heater(
     control = {}
     
     if power is not None:
-        control["Power"] = power
+        # power: "on" 或 "off"
+        control["power"] = "on" if power else "off"
     
     if target_temperature is not None:
         if target_temperature < 35 or target_temperature > 75:
             return "error:invalid_temperature"
-        control["TargetTemperature"] = target_temperature
+        control["temperature"] = target_temperature
     
     if operation_mode is not None:
         mode_map = {
@@ -66,7 +67,7 @@ async def control_midea_water_heater(
             "vacation": "vacation"
         }
         if operation_mode in mode_map:
-            control["OperationMode"] = mode_map[operation_mode]
+            control["mode"] = mode_map[operation_mode]
         else:
             return f"error:invalid_operation_mode:{operation_mode}"
     

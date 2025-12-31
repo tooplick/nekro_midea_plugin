@@ -58,17 +58,18 @@ async def control_midea_light(
     control = {}
     
     if power is not None:
-        control["Power"] = power
+        # power: "on" 或 "off"
+        control["power"] = "on" if power else "off"
     
     if brightness is not None:
         if brightness < 1 or brightness > 100:
             return "error:invalid_brightness"
-        control["Brightness"] = brightness
+        control["brightness"] = brightness
     
     if color_temp is not None:
         if color_temp < 0 or color_temp > 100:
             return "error:invalid_color_temp"
-        control["ColorTemperature"] = color_temp
+        control["color_temperature"] = color_temp
     
     if effect is not None:
         effect_map = {
@@ -77,7 +78,7 @@ async def control_midea_light(
             "flash": 2
         }
         if effect in effect_map:
-            control["Effect"] = effect_map[effect]
+            control["effect"] = effect_map[effect]
         else:
             return f"error:invalid_effect:{effect}"
     
@@ -89,9 +90,9 @@ async def control_midea_light(
             r, g, b = int(parts[0]), int(parts[1]), int(parts[2])
             if not (0 <= r <= 255 and 0 <= g <= 255 and 0 <= b <= 255):
                 return "error:invalid_rgb_color_range"
-            control["R"] = r
-            control["G"] = g
-            control["B"] = b
+            control["r"] = r
+            control["g"] = g
+            control["b"] = b
         except ValueError:
             return "error:invalid_rgb_color_format"
     

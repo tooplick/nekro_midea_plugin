@@ -59,12 +59,13 @@ async def control_midea_humidifier(
     control = {}
     
     if power is not None:
-        control["Power"] = power
+        # power: "on" 或 "off"
+        control["power"] = "on" if power else "off"
     
     if target_humidity is not None:
         if target_humidity < 30 or target_humidity > 80:
             return "error:invalid_humidity"
-        control["Humidity"] = target_humidity
+        control["humidity"] = target_humidity
     
     if mode is not None:
         mode_map = {
@@ -73,7 +74,7 @@ async def control_midea_humidifier(
             "sleep": "sleep"
         }
         if mode in mode_map:
-            control["HumidityMode"] = mode_map[mode]
+            control["humidity_mode"] = mode_map[mode]
         else:
             return f"error:invalid_mode:{mode}"
     
@@ -85,24 +86,27 @@ async def control_midea_humidifier(
             "auto": "auto"
         }
         if wind_gear in gear_map:
-            control["WindGear"] = gear_map[wind_gear]
+            control["wind_gear"] = gear_map[wind_gear]
         else:
             return f"error:invalid_wind_gear:{wind_gear}"
     
     if net_ions is not None:
         if net_ions not in (0, 1):
             return "error:invalid_net_ions"
-        control["NetIonsOnOff"] = net_ions
+        # netIons_on_off: "on" 或 "off"
+        control["netIons_on_off"] = "on" if net_ions else "off"
     
     if air_dry is not None:
         if air_dry not in (0, 1):
             return "error:invalid_air_dry"
-        control["AirDryOnOff"] = air_dry
+        # airDry_on_off: "on" 或 "off"
+        control["airDry_on_off"] = "on" if air_dry else "off"
     
     if buzzer is not None:
         if buzzer not in (0, 1):
             return "error:invalid_buzzer"
-        control["Buzzer"] = buzzer
+        # buzzer: "on" 或 "off"
+        control["buzzer"] = "on" if buzzer else "off"
     
     if not control:
         return "error:no_params"

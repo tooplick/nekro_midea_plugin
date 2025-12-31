@@ -59,12 +59,13 @@ async def control_midea_dehumidifier(
     control = {}
     
     if power is not None:
-        control["Power"] = power
+        # power: "on" 或 "off"
+        control["power"] = "on" if power else "off"
     
     if target_humidity is not None:
         if target_humidity < 35 or target_humidity > 85:
             return "error:invalid_humidity"
-        control["Humidity"] = target_humidity
+        control["humidity"] = target_humidity
     
     if mode is not None:
         mode_map = {
@@ -75,7 +76,7 @@ async def control_midea_dehumidifier(
             "dry_clothes": "dry_clothes"
         }
         if mode in mode_map:
-            control["Mode"] = mode_map[mode]
+            control["mode"] = mode_map[mode]
         else:
             return f"error:invalid_mode:{mode}"
     
@@ -85,24 +86,27 @@ async def control_midea_dehumidifier(
             "high": "80"
         }
         if fan_speed in speed_map:
-            control["WindSpeed"] = speed_map[fan_speed]
+            control["wind_speed"] = speed_map[fan_speed]
         else:
             return f"error:invalid_fan_speed:{fan_speed}"
     
     if anion is not None:
         if anion not in (0, 1):
             return "error:invalid_anion"
-        control["Anion"] = anion
+        # anion: "on" 或 "off"
+        control["anion"] = "on" if anion else "off"
     
     if child_lock is not None:
         if child_lock not in (0, 1):
             return "error:invalid_child_lock"
-        control["ChildLock"] = child_lock
+        # child_lock: "on" 或 "off"
+        control["child_lock"] = "on" if child_lock else "off"
     
     if swing_ud is not None:
         if swing_ud not in (0, 1):
             return "error:invalid_swing_ud"
-        control["WindSwingUD"] = swing_ud
+        # wind_swing_ud: "on" 或 "off"
+        control["wind_swing_ud"] = "on" if swing_ud else "off"
     
     if not control:
         return "error:no_params"

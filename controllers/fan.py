@@ -59,13 +59,16 @@ async def control_midea_fan(
     control = {}
     
     if power is not None:
-        control["Power"] = power
+        # power: "on" 或 "off"
+        control["power"] = "on" if power else "off"
     
     if fan_speed is not None:
-        control["FanSpeed"] = fan_speed
+        # gear: 风速档位 (1-100)
+        control["gear"] = fan_speed
     
     if oscillate is not None:
-        control["Oscillate"] = oscillate
+        # swing: "on" 或 "off"
+        control["swing"] = "on" if oscillate else "off"
     
     if mode is not None:
         mode_map = {
@@ -77,20 +80,21 @@ async def control_midea_fan(
             "purified_wind": "purified_wind"
         }
         if mode in mode_map:
-            control["Mode"] = mode_map[mode]
+            control["mode"] = mode_map[mode]
         else:
             return f"error:invalid_mode:{mode}"
     
     if anion is not None:
         if anion not in (0, 1):
             return "error:invalid_anion"
-        control["Anion"] = anion
+        # anion: "on" 或 "off"
+        control["anion"] = "on" if anion else "off"
     
     if display is not None:
         if display not in (0, 1):
             return "error:invalid_display"
         # display_on_off 使用反向逻辑：on=关闭显示，off=开启显示
-        control["DisplayOnOff"] = "off" if display else "on"
+        control["display_on_off"] = "off" if display else "on"
     
     if swing_direction is not None:
         swing_map = {
@@ -100,7 +104,7 @@ async def control_midea_fan(
             "both": "both"
         }
         if swing_direction in swing_map:
-            control["SwingDirection"] = swing_map[swing_direction]
+            control["swing_direction"] = swing_map[swing_direction]
         else:
             return f"error:invalid_swing_direction:{swing_direction}"
     
