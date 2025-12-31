@@ -52,6 +52,7 @@ class MeijuCloud:
             "access_token": self._access_token,
             "aes_key": self._aes_key,
             "account": self._account,
+            "password": self._password,  # 保存密码用于自动刷新
         }
 
     def load_credentials(self, creds: dict) -> bool:
@@ -60,6 +61,8 @@ class MeijuCloud:
             return False
         self._access_token = creds.get("access_token")
         self._aes_key = creds.get("aes_key")
+        if creds.get("password"):
+            self._password = creds.get("password")
         if self._aes_key:
             self._security.set_aes_keys(self._aes_key, None)
         return bool(self._access_token)

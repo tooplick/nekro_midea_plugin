@@ -108,7 +108,7 @@ async def logout():
 
 
 async def _get_cloud_client() -> MeijuCloud | None:
-    """获取已登录的云客户端"""
+    """获取已登录的云客户端，支持加载密码用于自动刷新"""
     creds_json = await plugin.store.get(store_key=STORE_KEY_CREDENTIALS)
     if not creds_json:
         return None
@@ -117,9 +117,47 @@ async def _get_cloud_client() -> MeijuCloud | None:
     if not creds.get("access_token"):
         return None
     
-    cloud = MeijuCloud(account=creds.get("account", ""), password="")
+    cloud = MeijuCloud(
+        account=creds.get("account", ""), 
+        password=creds.get("password", "")  # 加载密码用于自动刷新
+    )
     cloud.load_credentials(creds)
     return cloud
+
+
+async def _refresh_credentials(cloud: MeijuCloud) -> bool:
+    """刷新凭证
+    
+    当检测到登录状态失效时，使用保存的账号密码重新登录
+    
+    Returns:
+        刷新成功返回 True，失败返回 False
+    """
+    # 检查是否启用自动刷新
+    if not plugin.config.auto_refresh_enabled:
+        logger.debug("自动刷新凭证已禁用")
+        return False
+    
+    # 检查是否有密码
+    if not cloud._password:
+        logger.warning("无法自动刷新凭证：未保存密码")
+        return False
+    
+    logger.info(f"正在自动刷新美的账号 {cloud._account} 的凭证...")
+    success, message = await cloud.login()
+    
+    if success:
+        # 保存新凭证
+        creds = cloud.get_credentials()
+        await plugin.store.set(
+            store_key=STORE_KEY_CREDENTIALS,
+            value=json.dumps(creds)
+        )
+        logger.info("凭证刷新成功")
+        return True
+    else:
+        logger.error(f"凭证刷新失败: {message}")
+        return False
 
 
 @router.get("/api/homes")
@@ -132,7 +170,11 @@ async def get_homes():
     try:
         homes = await cloud.list_home()
         if homes is None:
-            raise HTTPException(status_code=500, detail="获取家庭列表失败")
+            # 尝试刷新凭证后重试
+            if await _refresh_credentials(cloud):
+                homes = await cloud.list_home()
+            if homes is None:
+                raise HTTPException(status_code=500, detail="获取家庭列表失败")
         
         # 转换为列表格式
         home_list = [{"id": k, "name": v} for k, v in homes.items()]
@@ -154,7 +196,11 @@ async def get_devices(home_id: int):
     try:
         appliances = await cloud.list_appliances(home_id)
         if appliances is None:
-            raise HTTPException(status_code=500, detail="获取设备列表失败")
+            # 尝试刷新凭证后重试
+            if await _refresh_credentials(cloud):
+                appliances = await cloud.list_appliances(home_id)
+            if appliances is None:
+                raise HTTPException(status_code=500, detail="获取设备列表失败")
         
         # 转换为列表格式，添加设备类型名称
         device_list = []
