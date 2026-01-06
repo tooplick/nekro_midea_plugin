@@ -168,16 +168,18 @@ async def get_homes():
         raise HTTPException(status_code=401, detail="未登录")
     
     try:
-        homes = await cloud.list_home()
-        if homes is None:
-            # 尝试刷新凭证后重试
+        result = await cloud.list_home()
+        
+        # 如果是 token 错误，尝试刷新凭证后重试
+        if result.is_token_error:
             if await _refresh_credentials(cloud):
-                homes = await cloud.list_home()
-            if homes is None:
-                raise HTTPException(status_code=500, detail="获取家庭列表失败")
+                result = await cloud.list_home()
+        
+        if not result.success or not result.data:
+            raise HTTPException(status_code=500, detail="获取家庭列表失败")
         
         # 转换为列表格式
-        home_list = [{"id": k, "name": v} for k, v in homes.items()]
+        home_list = [{"id": k, "name": v} for k, v in result.data.items()]
         return {"homes": home_list}
     except HTTPException:
         raise
@@ -194,17 +196,19 @@ async def get_devices(home_id: int):
         raise HTTPException(status_code=401, detail="未登录")
     
     try:
-        appliances = await cloud.list_appliances(home_id)
-        if appliances is None:
-            # 尝试刷新凭证后重试
+        result = await cloud.list_appliances(home_id)
+        
+        # 如果是 token 错误，尝试刷新凭证后重试
+        if result.is_token_error:
             if await _refresh_credentials(cloud):
-                appliances = await cloud.list_appliances(home_id)
-            if appliances is None:
-                raise HTTPException(status_code=500, detail="获取设备列表失败")
+                result = await cloud.list_appliances(home_id)
+        
+        if not result.success or not result.data:
+            raise HTTPException(status_code=500, detail="获取设备列表失败")
         
         # 转换为列表格式，添加设备类型名称
         device_list = []
-        for device_id, info in appliances.items():
+        for device_id, info in result.data.items():
             device_list.append({
                 "id": device_id,
                 "name": info["name"],

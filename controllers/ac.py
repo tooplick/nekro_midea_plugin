@@ -6,7 +6,7 @@ from nekro_agent.api.plugin import SandboxMethodType
 from nekro_agent.api.schemas import AgentCtx
 
 from ..plugin import plugin
-from .base import get_cloud_client
+from .base import get_cloud_client, send_device_control_with_retry, get_device_status_with_retry
 
 
 @plugin.mount_sandbox_method(
@@ -124,11 +124,8 @@ async def control_midea_ac(
         return "error:no_params"
     
     try:
-        success = await cloud.send_device_control(device_id, control)
-        if success:
-            return "ok"
-        else:
-            return "error:device_offline"
+        success, error = await send_device_control_with_retry(cloud, device_id, control)
+        return "ok" if success else error
     except Exception as e:
         return f"error:exception:{e}"
 
@@ -175,9 +172,11 @@ async def get_midea_ac_status(_ctx: AgentCtx, device_id: int) -> str:
         # 使用空查询获取所有状态
         query = {}
         
-        response = await cloud.get_device_status(device_id, query)
-        if not response:
+        result = await get_device_status_with_retry(cloud, device_id, query)
+        if not result.success or not result.data:
             return f"获取设备 {device_id} 状态失败，设备可能离线"
+        
+        response = result.data
         
         # 从响应中提取状态（API返回的是小写参数名）
         status = response.get("status", response)

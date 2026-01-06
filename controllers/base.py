@@ -5,9 +5,10 @@
 import json
 from nekro_agent.api.plugin import SandboxMethodType
 from nekro_agent.api.schemas import AgentCtx
+from nekro_agent.api.core import logger
 
 from ..constants import STORE_KEY_CREDENTIALS, get_device_type_name
-from ..midea import MeijuCloud
+from ..midea import MeijuCloud, ApiResult
 from ..plugin import plugin
 
 
@@ -37,10 +38,9 @@ async def _refresh_credentials(cloud: MeijuCloud) -> bool:
     Returns:
         刷新成功返回 True，失败返回 False
     """
-    from nekro_agent.api.core import logger
-    
     # 检查是否启用自动刷新
     if not plugin.config.auto_refresh_enabled:
+        logger.debug("自动刷新凭证已禁用")
         return False
     
     # 检查是否有密码
@@ -63,6 +63,71 @@ async def _refresh_credentials(cloud: MeijuCloud) -> bool:
     else:
         logger.error(f"凭证刷新失败: {message}")
         return False
+
+
+async def send_device_control_with_retry(
+    cloud: MeijuCloud, 
+    device_id: int, 
+    control: dict
+) -> tuple[bool, str]:
+    """带自动刷新的设备控制
+    
+    当检测到 token 过期时，自动刷新凭证并重试
+    
+    Args:
+        cloud: 美的云客户端
+        device_id: 设备 ID
+        control: 控制命令字典
+        
+    Returns:
+        (成功标志, 错误消息或 "ok")
+    """
+    result = await cloud.send_device_control(device_id, control)
+    
+    # 如果是 token 错误，尝试刷新并重试
+    if result.is_token_error:
+        logger.debug(f"检测到 token 错误 (code={result.error_code})，尝试刷新凭证...")
+        if await _refresh_credentials(cloud):
+            result = await cloud.send_device_control(device_id, control)
+    
+    if result.success:
+        return True, "ok"
+    else:
+        # 区分不同类型的错误
+        if result.is_token_error:
+            return False, "error:token_expired"
+        elif result.error_code == -1:
+            return False, f"error:network:{result.error_message}"
+        else:
+            return False, "error:device_offline"
+
+
+async def get_device_status_with_retry(
+    cloud: MeijuCloud,
+    device_id: int,
+    query: dict
+) -> ApiResult:
+    """带自动刷新的设备状态获取
+    
+    当检测到 token 过期时，自动刷新凭证并重试
+    
+    Args:
+        cloud: 美的云客户端
+        device_id: 设备 ID
+        query: 查询参数字典
+        
+    Returns:
+        ApiResult 对象
+    """
+    result = await cloud.get_device_status(device_id, query)
+    
+    # 如果是 token 错误，尝试刷新并重试
+    if result.is_token_error:
+        logger.debug(f"检测到 token 错误 (code={result.error_code})，尝试刷新凭证...")
+        if await _refresh_credentials(cloud):
+            result = await cloud.get_device_status(device_id, query)
+    
+    return result
 
 
 @plugin.mount_sandbox_method(
@@ -89,25 +154,28 @@ async def get_midea_devices(_ctx: AgentCtx) -> str:
     
     try:
         # 获取家庭列表
-        homes = await cloud.list_home()
-        if not homes:
-            # 尝试刷新凭证后重试
-            if await _refresh_credentials(cloud):
-                homes = await cloud.list_home()
-            if not homes:
-                return "获取家庭列表失败"
+        result = await cloud.list_home()
         
+        # 如果是 token 错误，尝试刷新并重试
+        if result.is_token_error:
+            if await _refresh_credentials(cloud):
+                result = await cloud.list_home()
+        
+        if not result.success or not result.data:
+            return "获取家庭列表失败"
+        
+        homes = result.data
         result_lines = ["📱 美的智能家居设备列表：", ""]
         
         for home_id, home_name in homes.items():
             result_lines.append(f"🏠 {home_name}:")
             
-            appliances = await cloud.list_appliances(home_id)
-            if not appliances:
+            app_result = await cloud.list_appliances(home_id)
+            if not app_result.success or not app_result.data:
                 result_lines.append("  （无设备）")
                 continue
             
-            for device_id, info in appliances.items():
+            for device_id, info in app_result.data.items():
                 status = "🟢在线" if info["online"] else "🔴离线"
                 type_name = get_device_type_name(info["type"])
                 result_lines.append(f"  • {info['name']} ({type_name})")
@@ -160,12 +228,8 @@ async def control_midea_device(
         return "error:invalid_params"
     
     try:
-        success = await cloud.send_device_control(device_id, control)
-        if not success:
-            # 尝试刷新凭证后重试
-            if await _refresh_credentials(cloud):
-                success = await cloud.send_device_control(device_id, control)
-        return "ok" if success else "error:device_offline"
+        success, error = await send_device_control_with_retry(cloud, device_id, control)
+        return "ok" if success else error
     except Exception as e:
         return f"error:exception:{e}"
 
@@ -209,13 +273,9 @@ async def get_midea_device_status(
         return "错误：查询参数必须是非空的JSON对象"
     
     try:
-        status = await cloud.get_device_status(device_id, query)
-        if not status:
-            # 尝试刷新凭证后重试
-            if await _refresh_credentials(cloud):
-                status = await cloud.get_device_status(device_id, query)
-        if status:
-            return json.dumps(status, ensure_ascii=False, indent=2)
+        result = await get_device_status_with_retry(cloud, device_id, query)
+        if result.success and result.data:
+            return json.dumps(result.data, ensure_ascii=False, indent=2)
         else:
             return f"获取设备 {device_id} 状态失败，设备可能离线"
     except Exception as e:

@@ -6,12 +6,34 @@ import time
 import datetime
 import json
 import traceback
+from dataclasses import dataclass
 from secrets import token_hex
 
 import httpx
 
 from ..constants import CLOUD_CONFIG
 from .security import MeijuCloudSecurity
+
+
+# 美的 API 错误码
+ERROR_CODE_OK = 0
+ERROR_CODE_TOKEN_EXPIRED = 40004  # token 过期
+ERROR_CODE_TOKEN_INVALID = 40001  # token 无效
+ERROR_CODES_TOKEN_ISSUES = {ERROR_CODE_TOKEN_EXPIRED, ERROR_CODE_TOKEN_INVALID}
+
+
+@dataclass
+class ApiResult:
+    """API 请求结果"""
+    success: bool
+    data: dict | None = None
+    error_code: int = 0
+    error_message: str = ""
+    
+    @property
+    def is_token_error(self) -> bool:
+        """是否为 token 相关错误（需要刷新凭证）"""
+        return self.error_code in ERROR_CODES_TOKEN_ISSUES
 
 
 class MeijuCloud:
@@ -67,8 +89,12 @@ class MeijuCloud:
             self._security.set_aes_keys(self._aes_key, None)
         return bool(self._access_token)
 
-    async def _api_request(self, endpoint: str, data: dict, header=None, method="POST") -> dict | None:
-        """发送 API 请求"""
+    async def _api_request(self, endpoint: str, data: dict, header=None, method="POST") -> ApiResult:
+        """发送 API 请求
+        
+        Returns:
+            ApiResult: 包含成功状态、数据、错误码等信息
+        """
         header = header or {}
         if not data.get("reqId"):
             data["reqId"] = token_hex(16)
@@ -95,11 +121,17 @@ class MeijuCloud:
                 response = r.json()
         except Exception as e:
             traceback.print_exc()
-            return None
+            return ApiResult(success=False, error_code=-1, error_message=str(e))
 
-        if int(response.get("code", -1)) == 0:
-            return response.get("data", {"message": "ok"})
-        return None
+        code = int(response.get("code", -1))
+        if code == ERROR_CODE_OK:
+            return ApiResult(success=True, data=response.get("data", {"message": "ok"}))
+        else:
+            return ApiResult(
+                success=False, 
+                error_code=code, 
+                error_message=response.get("msg", "Unknown error")
+            )
 
     async def _get_login_id(self) -> str | None:
         """获取登录 ID"""
@@ -107,8 +139,8 @@ class MeijuCloud:
             "loginAccount": self._account,
             "type": "1",
         }
-        response = await self._api_request("/v1/user/login/id/get", data)
-        return response.get("loginId") if response else None
+        result = await self._api_request("/v1/user/login/id/get", data)
+        return result.data.get("loginId") if result.success and result.data else None
 
     async def login(self) -> tuple[bool, str]:
         """
@@ -144,35 +176,43 @@ class MeijuCloud:
             "stamp": stamp
         }
         
-        response = await self._api_request("/mj/user/login", data)
-        if response:
+        result = await self._api_request("/mj/user/login", data)
+        if result.success and result.data:
             try:
-                self._access_token = response["mdata"]["accessToken"]
-                self._aes_key = self._security.aes_decrypt_with_fixed_key(response["key"])
+                self._access_token = result.data["mdata"]["accessToken"]
+                self._aes_key = self._security.aes_decrypt_with_fixed_key(result.data["key"])
                 self._security.set_aes_keys(self._aes_key, None)
                 return True, "登录成功"
             except KeyError as e:
                 return False, f"解析登录响应失败: {e}"
-        return False, "登录失败，请检查账号密码"
+        return False, f"登录失败: {result.error_message or '请检查账号密码'}"
 
-    async def list_home(self) -> dict | None:
-        """获取家庭列表"""
-        response = await self._api_request("/v1/homegroup/list/get", {})
-        if response:
-            homes = {}
-            for home in response.get("homeList", []):
-                homes[int(home["homegroupId"])] = home["name"]
-            return homes
-        return None
-
-    async def list_appliances(self, home_id: int) -> dict | None:
-        """获取设备列表"""
-        self._homegroup_id = str(home_id)
-        response = await self._api_request("/v1/appliance/home/list/get", {"homegroupId": home_id})
+    async def list_home(self) -> ApiResult:
+        """获取家庭列表
         
-        if response:
+        Returns:
+            ApiResult: 成功时 data 包含 {home_id: home_name} 字典
+        """
+        result = await self._api_request("/v1/homegroup/list/get", {})
+        if result.success and result.data:
+            homes = {}
+            for home in result.data.get("homeList", []):
+                homes[int(home["homegroupId"])] = home["name"]
+            return ApiResult(success=True, data=homes)
+        return result
+
+    async def list_appliances(self, home_id: int) -> ApiResult:
+        """获取设备列表
+        
+        Returns:
+            ApiResult: 成功时 data 包含设备字典 {device_id: device_info}
+        """
+        self._homegroup_id = str(home_id)
+        result = await self._api_request("/v1/appliance/home/list/get", {"homegroupId": home_id})
+        
+        if result.success and result.data:
             appliances = {}
-            for home in response.get("homeList") or []:
+            for home in result.data.get("homeList") or []:
                 for room in home.get("roomList") or []:
                     for appliance in room.get("applianceList") or []:
                         try:
@@ -193,10 +233,10 @@ class MeijuCloud:
                             "room": room.get("name", "未知房间"),
                         }
                         appliances[int(appliance["applianceCode"])] = device_info
-            return appliances
-        return None
+            return ApiResult(success=True, data=appliances)
+        return result
 
-    async def get_device_status(self, appliance_code: int, query: dict) -> dict | None:
+    async def get_device_status(self, appliance_code: int, query: dict) -> ApiResult:
         """
         获取设备状态
         
@@ -205,7 +245,7 @@ class MeijuCloud:
             query: 查询参数字典，如 {"Power": {}, "SetTemperature": {}}
             
         Returns:
-            设备状态字典，失败返回 None
+            ApiResult: 成功时 data 包含设备状态字典
         """
         data = {
             "applianceCode": str(appliance_code),
@@ -213,10 +253,9 @@ class MeijuCloud:
                 "query": query
             }
         }
-        response = await self._api_request("/mjl/v1/device/status/lua/get", data)
-        return response
+        return await self._api_request("/mjl/v1/device/status/lua/get", data)
 
-    async def send_device_control(self, appliance_code: int, control: dict, status: dict | None = None) -> bool:
+    async def send_device_control(self, appliance_code: int, control: dict, status: dict | None = None) -> ApiResult:
         """
         发送设备控制命令
         
@@ -226,7 +265,7 @@ class MeijuCloud:
             status: 当前状态字典（可选）
             
         Returns:
-            发送成功返回 True，失败返回 False
+            ApiResult: 包含操作结果
         """
         data = {
             "applianceCode": str(appliance_code),
@@ -236,5 +275,4 @@ class MeijuCloud:
         }
         if status and isinstance(status, dict):
             data["command"]["status"] = status
-        response = await self._api_request("/mjl/v1/device/lua/control", data)
-        return response is not None
+        return await self._api_request("/mjl/v1/device/lua/control", data)

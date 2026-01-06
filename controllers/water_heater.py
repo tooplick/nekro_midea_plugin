@@ -6,7 +6,7 @@ from nekro_agent.api.plugin import SandboxMethodType
 from nekro_agent.api.schemas import AgentCtx
 
 from ..plugin import plugin
-from .base import get_cloud_client
+from .base import get_cloud_client, send_device_control_with_retry
 
 
 @plugin.mount_sandbox_method(
@@ -75,7 +75,7 @@ async def control_midea_water_heater(
         return "error:no_params"
     
     try:
-        success = await cloud.send_device_control(device_id, control)
-        return "ok" if success else "error:device_offline"
+        success, error = await send_device_control_with_retry(cloud, device_id, control)
+        return "ok" if success else error
     except Exception as e:
         return f"error:exception:{e}"
