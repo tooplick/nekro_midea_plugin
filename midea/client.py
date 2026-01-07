@@ -118,7 +118,14 @@ class MeijuCloud:
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 r = await client.request(method, url, headers=header, content=dump_data)
-                response = r.json()
+                try:
+                    response = r.json()
+                except Exception as json_err:
+                    return ApiResult(
+                        success=False, 
+                        error_code=-2, 
+                        error_message=f"JSON解析失败 (status={r.status_code}): {json_err}"
+                    )
         except Exception as e:
             traceback.print_exc()
             return ApiResult(success=False, error_code=-1, error_message=str(e))
