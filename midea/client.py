@@ -19,7 +19,8 @@ from .security import MeijuCloudSecurity
 ERROR_CODE_OK = 0
 ERROR_CODE_TOKEN_EXPIRED = 40004  # token 过期
 ERROR_CODE_TOKEN_INVALID = 40001  # token 无效
-ERROR_CODES_TOKEN_ISSUES = {ERROR_CODE_TOKEN_EXPIRED, ERROR_CODE_TOKEN_INVALID}
+ERROR_CODE_TOKEN_NOT_EXIST = 40002  # token 不存在
+ERROR_CODES_TOKEN_ISSUES = {ERROR_CODE_TOKEN_EXPIRED, ERROR_CODE_TOKEN_INVALID, ERROR_CODE_TOKEN_NOT_EXIST}
 
 
 @dataclass
@@ -116,8 +117,11 @@ class MeijuCloud:
             header["accesstoken"] = self._access_token
 
         try:
+            import logging
+            logging.debug(f"正在请求 {url}")
             async with httpx.AsyncClient(timeout=30) as client:
                 r = await client.request(method, url, headers=header, content=dump_data)
+                logging.debug(f"API 响应状态码: {r.status_code}")
                 try:
                     response = r.json()
                 except Exception as json_err:
