@@ -171,8 +171,14 @@ async def get_midea_devices(_ctx: AgentCtx) -> str:
             result_lines.append(f"🏠 {home_name}:")
             
             app_result = await cloud.list_appliances(home_id)
+            
+            # 如果是 token 错误，尝试刷新并重试
+            if app_result.is_token_error:
+                if await _refresh_credentials(cloud):
+                    app_result = await cloud.list_appliances(home_id)
+            
             if not app_result.success or not app_result.data:
-                result_lines.append("  （无设备）")
+                result_lines.append("  （无设备或获取失败）")
                 continue
             
             for device_id, info in app_result.data.items():

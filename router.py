@@ -169,14 +169,19 @@ async def get_homes():
     
     try:
         result = await cloud.list_home()
+        logger.debug(f"list_home 结果: success={result.success}, error_code={result.error_code}, is_token_error={result.is_token_error}")
         
         # 如果是 token 错误，尝试刷新凭证后重试
         if result.is_token_error:
+            logger.info(f"检测到 token 错误 (code={result.error_code})，尝试刷新凭证...")
             if await _refresh_credentials(cloud):
                 result = await cloud.list_home()
+                logger.debug(f"刷新后 list_home 结果: success={result.success}, error_code={result.error_code}")
         
         if not result.success or not result.data:
-            raise HTTPException(status_code=500, detail="获取家庭列表失败")
+            error_detail = f"获取家庭列表失败 (code={result.error_code}, msg={result.error_message})"
+            logger.error(error_detail)
+            raise HTTPException(status_code=500, detail=error_detail)
         
         # 转换为列表格式
         home_list = [{"id": k, "name": v} for k, v in result.data.items()]
