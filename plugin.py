@@ -2,9 +2,8 @@
 Nekro Agent 美的控制插件
 """
 
-from nekro_agent.api.plugin import NekroPlugin, ConfigBase
+from nekro_agent.api.plugin import NekroPlugin
 from nekro_agent.api.schemas import AgentCtx
-from pydantic import Field
 
 
 plugin = NekroPlugin(
@@ -15,17 +14,6 @@ plugin = NekroPlugin(
     author="GeQian",
     url="https://github.com/tooplick/nekro_midea_plugin",
 )
-
-
-@plugin.mount_config()
-class MideaPluginConfig(ConfigBase):
-    """美的插件配置"""
-    
-    auto_refresh_enabled: bool = Field(
-        default=True,
-        title="凭证自动刷新",
-        description="当登录状态失效时，自动使用保存的账号密码重新登录"
-    )
 
 
 @plugin.mount_prompt_inject_method(
