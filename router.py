@@ -125,6 +125,15 @@ async def _get_cloud_client() -> MeijuCloud | None:
     return cloud
 
 
+def _get_auto_refresh_enabled() -> bool:
+    """安全地获取自动刷新配置，当 config 不可用时返回默认值 True"""
+    try:
+        return plugin.config.auto_refresh_enabled
+    except AttributeError:
+        # config 属性可能在框架完全初始化前不可用
+        return True  # 默认启用自动刷新
+
+
 async def _refresh_credentials(cloud: MeijuCloud) -> bool:
     """刷新凭证
     
@@ -134,7 +143,7 @@ async def _refresh_credentials(cloud: MeijuCloud) -> bool:
         刷新成功返回 True，失败返回 False
     """
     # 检查是否启用自动刷新
-    if not plugin.config.auto_refresh_enabled:
+    if not _get_auto_refresh_enabled():
         logger.debug("自动刷新凭证已禁用")
         return False
     
