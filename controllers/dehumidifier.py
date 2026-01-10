@@ -6,7 +6,7 @@ from nekro_agent.api.plugin import SandboxMethodType
 from nekro_agent.api.schemas import AgentCtx
 
 from ..plugin import plugin
-from .base import get_cloud_client, send_device_control_with_retry
+from .base import get_cloud_client, send_device_control_with_retry, check_permission
 
 
 @plugin.mount_sandbox_method(
@@ -52,6 +52,11 @@ async def control_midea_dehumidifier(
         # 开启干衣模式
         result = control_midea_dehumidifier(device_id=12345678, mode="dry_clothes")
     """
+    # 权限检查
+    has_perm, perm_error = await check_permission(_ctx)
+    if not has_perm:
+        return perm_error
+    
     cloud = await get_cloud_client()
     if not cloud:
         return "error:not_logged_in"

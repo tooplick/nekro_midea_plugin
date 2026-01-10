@@ -228,6 +228,7 @@ status = get_midea_device_status(device_id=12345678, query_params='{}')
 | 返回值 | 说明 |
 |--------|------|
 | `"ok"` | 控制成功 |
+| `"error:permission_denied"` | 用户无权限使用（未在允许列表中） |
 | `"error:not_logged_in"` | 未登录美的账号 |
 | `"error:device_offline"` | 设备离线 |
 | `"error:invalid_xxx"` | 参数无效 |

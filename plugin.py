@@ -2,18 +2,37 @@
 Nekro Agent 美的控制插件
 """
 
-from nekro_agent.api.plugin import NekroPlugin
+from nekro_agent.api.plugin import NekroPlugin, ConfigBase, ExtraField
 from nekro_agent.api.schemas import AgentCtx
+from pydantic import Field
 
 
 plugin = NekroPlugin(
     name="美的智能家居控制",
     module_name="nekro_midea_plugin",
     description="给予AI助手通过美的云控制智能家居设备的能力",
-    version="1.3.0",
+    version="1.3.2",
     author="GeQian",
     url="https://github.com/tooplick/nekro_midea_plugin",
 )
+
+
+@plugin.mount_config()
+class MideaPluginConfig(ConfigBase):
+    """美的智能家居插件配置"""
+
+    allowed_users: str = Field(
+        default="",
+        title="允许使用的用户QQ号列表",
+        description="逗号分隔的 QQ 号（如：12345678,87654321），留空表示允许所有人使用",
+        json_schema_extra=ExtraField(
+            placeholder="例如: 12345678,87654321"
+        ).model_dump()
+    )
+
+
+# 获取配置实例
+config: MideaPluginConfig = plugin.get_config(MideaPluginConfig)
 
 
 @plugin.mount_prompt_inject_method(

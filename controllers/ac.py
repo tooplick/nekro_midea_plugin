@@ -6,7 +6,7 @@ from nekro_agent.api.plugin import SandboxMethodType
 from nekro_agent.api.schemas import AgentCtx
 
 from ..plugin import plugin
-from .base import get_cloud_client, send_device_control_with_retry, get_device_status_with_retry
+from .base import get_cloud_client, send_device_control_with_retry, get_device_status_with_retry, check_permission
 
 
 @plugin.mount_sandbox_method(
@@ -49,6 +49,11 @@ async def control_midea_ac(
     Returns:
         str: 控制结果，"ok"表示成功，"error:xxx"表示失败
     """
+    # 权限检查
+    has_perm, perm_error = await check_permission(_ctx)
+    if not has_perm:
+        return perm_error
+    
     cloud = await get_cloud_client()
     if not cloud:
         return "error:not_logged_in"
@@ -164,6 +169,11 @@ async def get_midea_ac_status(_ctx: AgentCtx, device_id: int) -> str:
     Returns:
         str: 空调状态的文本描述
     """
+    # 权限检查
+    has_perm, perm_error = await check_permission(_ctx)
+    if not has_perm:
+        return "错误：您没有权限使用美的智能家居控制功能"
+    
     cloud = await get_cloud_client()
     if not cloud:
         return "错误：美的账号未登录，请先在插件管理页面登录美的账号"

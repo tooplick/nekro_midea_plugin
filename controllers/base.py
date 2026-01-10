@@ -9,7 +9,51 @@ from nekro_agent.api.core import logger
 
 from ..constants import STORE_KEY_CREDENTIALS, get_device_type_name
 from ..midea import MeijuCloud, ApiResult
-from ..plugin import plugin
+from ..plugin import plugin, config
+
+
+def extract_qq_number(chat_key: str) -> str:
+    """从 chat_key 中提取 QQ 号
+    
+    chat_key 格式: onebot_v11-private_12345678 或 onebot_v11-group_12345678
+    提取最后一个下划线后的数字部分
+    
+    Args:
+        chat_key: 会话标识
+        
+    Returns:
+        QQ 号字符串，提取失败返回空字符串
+    """
+    if not chat_key:
+        return ""
+    parts = str(chat_key).split("_")
+    return parts[-1] if parts else ""
+
+
+async def check_permission(_ctx: AgentCtx) -> tuple[bool, str]:
+    """检查用户是否有权限使用美的控制功能
+    
+    从 _ctx.from_chat_key 提取 QQ 号，与配置的允许列表比对
+    
+    Args:
+        _ctx: Agent 上下文
+        
+    Returns:
+        (是否有权限, 错误消息)
+        - (True, "") 表示有权限
+        - (False, "error:permission_denied") 表示无权限
+    """
+    allowed = config.allowed_users.strip()
+    if not allowed:
+        return True, ""  # 留空=允许所有人
+    
+    user_list = [u.strip() for u in allowed.split(",") if u.strip()]
+    user_qq = extract_qq_number(_ctx.from_chat_key)
+    
+    if user_qq and user_qq in user_list:
+        return True, ""
+    
+    return False, "error:permission_denied"
 
 
 async def get_cloud_client() -> MeijuCloud | None:
@@ -143,6 +187,11 @@ async def get_midea_devices(_ctx: AgentCtx) -> str:
         devices = get_midea_devices()
         print(devices)
     """
+    # 权限检查
+    has_perm, perm_error = await check_permission(_ctx)
+    if not has_perm:
+        return "错误：您没有权限使用美的智能家居控制功能"
+    
     cloud = await get_cloud_client()
     if not cloud:
         return "错误：美的账号未登录，请先在插件管理页面登录美的账号"
@@ -216,6 +265,11 @@ async def control_midea_device(
         # 发送自定义控制命令
         result = control_midea_device(device_id=12345678, control_params='{"Power": 1}')
     """
+    # 权限检查
+    has_perm, perm_error = await check_permission(_ctx)
+    if not has_perm:
+        return perm_error
+    
     cloud = await get_cloud_client()
     if not cloud:
         return "error:not_logged_in"
@@ -261,6 +315,11 @@ async def get_midea_device_status(
         # 查询设备电源和模式状态
         result = get_midea_device_status(device_id=12345678, query_params='{"Power": {}, "Mode": {}}')
     """
+    # 权限检查
+    has_perm, perm_error = await check_permission(_ctx)
+    if not has_perm:
+        return "错误：您没有权限使用美的智能家居控制功能"
+    
     cloud = await get_cloud_client()
     if not cloud:
         return "错误：美的账号未登录"

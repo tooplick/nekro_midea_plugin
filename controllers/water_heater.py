@@ -6,7 +6,7 @@ from nekro_agent.api.plugin import SandboxMethodType
 from nekro_agent.api.schemas import AgentCtx
 
 from ..plugin import plugin
-from .base import get_cloud_client, send_device_control_with_retry
+from .base import get_cloud_client, send_device_control_with_retry, check_permission
 
 
 @plugin.mount_sandbox_method(
@@ -44,6 +44,11 @@ async def control_midea_water_heater(
         # 设置速热模式，快速加热
         result = control_midea_water_heater(device_id=12345678, operation_mode="boost")
     """
+    # 权限检查
+    has_perm, perm_error = await check_permission(_ctx)
+    if not has_perm:
+        return perm_error
+    
     cloud = await get_cloud_client()
     if not cloud:
         return "error:not_logged_in"
